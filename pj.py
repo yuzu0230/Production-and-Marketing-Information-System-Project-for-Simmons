@@ -4,7 +4,6 @@ from math import pow
 
 import json
 from flask import Flask, request, jsonify, render_template, abort
-from flask.json.tag import JSONTag
 from flask_cors import CORS
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
