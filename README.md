@@ -1,5 +1,7 @@
 產銷資訊系統期末project  
-使用flask框架的後端，使用api與前端連結  
+-使用flask框架的後端  
+-使用api與前端連結  
+-原資料庫為sqlite，上傳到heroku後升級為PostgreSQL
     
 doc(2022/01/03更):https://reurl.cc/02o6lb  
 heroku線上server網址:https://python-nccu-mis.herokuapp.com/  
