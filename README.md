@@ -7,7 +7,7 @@
 -[demo](https://simmons.vercel.app/)  
     
 doc(2022/01/03更):https://reurl.cc/02o6lb  
-heroku線上server網址:[heroku](https://python-nccu-mis.herokuapp.com/)  
+heroku線上server網址:https://python-nccu-mis.herokuapp.com/  
 (若要使用heroku，將網址前面的本機端改為上行網址即可)  
 
   
