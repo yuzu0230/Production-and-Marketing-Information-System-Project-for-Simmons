@@ -1,7 +1,9 @@
 final-pj built with flask
 
 產銷資訊系統期末project  
-doc(2022/01/03更):https://reurl.cc/02o6lb
+doc(2022/01/03更):https://reurl.cc/02o6lb  
+heroku線上server網址:https://python-nccu-mis.herokuapp.com/. 
+
   
 2021/12/24  
 目前完成功能:  
