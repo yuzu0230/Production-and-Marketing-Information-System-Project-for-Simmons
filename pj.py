@@ -12,6 +12,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 app = Flask(__name__)
 CORS(app)
 
@@ -43,28 +44,23 @@ class Member(db.Model):
         self.age = age
         self.monetary = 0
 
-order_product_relation = db.Table(
-    'order_product',
-    db.Column('order_id', db.Integer, db.ForeignKey('order.order_id')),
-    db.Column('product_id', db.Integer, db.ForeignKey('product.product_id'))
-    )
-
 class Order(db.Model):
     __tablename__ = "order"
     order_id = db.Column(db.Integer, primary_key=True)
     total_amount = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
 
     # 一對多的多
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'), nullable=False)
 
-    order_product_relation = db.relationship('Product', backref='products',
-                                          secondary=order_product_relation)
-
-    def __init__(self, total_amount, member_id, date):
+    def __init__(self, total_amount, member_id, date, quantity, product_id):
         self.total_amount = total_amount
         self.member_id = member_id
         self.date = date
+        self.quantity = quantity
+        self.product_id = product_id
 
 # Set many to many relation.
 
@@ -94,12 +90,6 @@ class Product(db.Model):
         self.leading_time = leading_time
         self.reorder_point = reorder_point
 
-material_material_relation = db.Table(
-    'material_material',
-    db.Column('material_id', db.Integer, db.ForeignKey('material.material_id')),
-    db.Column('raw_material_id', db.Integer, db.ForeignKey('material.material_id'))
-    )
-
 class Material(db.Model):
     __tablename__ = 'material'
     material_id = db.Column(db.Integer, primary_key=True)
@@ -108,16 +98,17 @@ class Material(db.Model):
     leading_time = db.Column(db.Integer, nullable=False)
     reorder_point = db.Column(db.Float, nullable=False)
 
-    material_material_relation = db.relationship('Material',
-                                         secondary=material_material_relation,
-                                         primaryjoin=material_id == material_material_relation.c.material_id,
-                                         secondaryjoin=material_id == material_material_relation.c.raw_material_id
-                                         )
-
-
-    def __init__(self, material_id, material_name):
-        self.material_id = material_id
+    def __init__(self, material_name):
         self.material_name = material_name
+
+class Material_Material(db.Model):
+    __tablename__ = 'material_material'
+    material_id = db.Column(db.Integer, db.ForeignKey('material.material_id'), primary_key=True)
+    raw_material_id = db.Column(db.Integer, db.ForeignKey('material.material_id'), primary_key=True)
+
+    def __init__(self, material_id, raw_material_id):
+        self.material_id = material_id
+        self.raw_material_id = raw_material_id
 
 class Season_Sale(db.Model):
     __tablename__ = "season_sale"
@@ -138,7 +129,7 @@ class MemberSchema(ma.Schema):
 # Order Schema
 class OrderSchema(ma.Schema):
     class Meta:
-        fields = ("order_id", "total_amount", "date", "member_id")
+        fields = ("order_id", "total_amount", "date", "member_id", 'product_id', 'quantity')
 
 # Product schema
 class ProductSchema(ma.Schema, json.JSONEncoder):
@@ -157,10 +148,13 @@ class MaterialSchema(ma.Schema, json.JSONEncoder):
             return list(obj)
         return json.JSONEncoder.default(self, obj)
     class Meta:
-        fields = ('material_id', 'material_name', 'on_hand_balance', 'leading_time',
-                  'reorder_point', 'material_material_relation')
+        fields = ('material_id', 'material_name', 'on_hand_balance', 'leading_time', 'reorder_point')
 
 # Material and their raw material schema.
+class MaterialMaterialSchema(ma.Schema):
+    class Meta:
+        fields = ('material_id', 'raw_material_id')
+
 # Season_Sale Schema
 class SeasonSaleSchema(ma.Schema):
     class Meta:
@@ -175,6 +169,8 @@ product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 material_schema = MaterialSchema()
 materials_schema = MaterialSchema(many=True)
+material_material_schema = MaterialMaterialSchema()
+materials_material_schema = MaterialMaterialSchema(many=True)
 season_sale_schema = SeasonSaleSchema()
 season_sales_schema = SeasonSaleSchema(many=True)
 
@@ -269,18 +265,16 @@ def add_order():
         total_amount = request_data['total_amount']
         date = request_data['date']
         date = datetime.strptime(date, '%Y-%m-%d')
+        quantity = request_data['quantity']
+        product_id = request_data['product_id']
 
-        new_order = Order(total_amount, member_id, date)
+        new_order = Order(total_amount, member_id, date, quantity, product_id)
         db.session.add(new_order)
 
-        ### Update product and orderProduct simultaneously. ###
+        ### Update product simultaneously. ###
         # update product's on hand balance.
-        product_id = request_data['product_id']
         updated_product = Product.query.filter_by(product_id=product_id).first()
         updated_product.on_hand_balance -= request_data['quantity']
-
-        # update orderProduct.
-        new_order.order_product_relation.append(updated_product)
 
         db.session.add(updated_product)
         db.session.add(new_order)
@@ -288,7 +282,7 @@ def add_order():
 
         # When add an order, update member's monetary
         db.session.add(update_member_monetary(member_id, total_amount))
-        db.session.add(update_season_sale())
+        update_season_sale()
 
         db.session.commit()
         return order_schema.jsonify(new_order)
@@ -340,12 +334,13 @@ def delete_order(id):
         order_to_delete = Order.query.get(id)
         amount = -(order_to_delete.total_amount)
 
-        order_to_delete.order_product_relation = []
+        # update product.
+        product = Product.query.get(order_to_delete.product_id)
+        product.on_hand_balance += order_to_delete.quantity
 
         db.session.delete(order_to_delete)
         # When delete an order, update member's monetary
         update_member_monetary(order_to_delete.member_id, amount)
-        update_season_sale()
         db.session.commit()
         return order_schema.jsonify(order_to_delete)
 
@@ -355,9 +350,7 @@ def delete_order(id):
 def get_products():
     if Product.query.first_or_404():
         all_products = Product.query.all()
-        print(all_products)
         result = products_schema.dump(all_products)
-        print(result)
         return jsonify(result)
 
 # Get products paginate.
@@ -415,83 +408,160 @@ def update_inventory():
     materials = materials_schema.dump(updated_materials)
 
     db.session.commit()
+
     return jsonify(products=products, materials=materials)
 
-# Order predict using seasonal additive method.
-@app.route('/order/predict', methods=['GET'])
+
+# seasonal seasonal_predict
 def seasonal_predict():
+    order = Order.query.all()
+
+    today = datetime.today()
+    orders_quaters = {1:[], 2:[], 3:[], 4:[]}
+    if today > datetime(year=today.year, month=10, day=1):
+        for order in order:
+            if order.date > datetime(year=today.year, month=1, day=1):
+                if order.date < datetime(year=today.year, month=4, day=1):
+                    orders_quaters[1].append(order)
+                elif order.date < datetime(year=today.year, month=7, day=1):
+                    orders_quaters[2].append(order)
+                elif order.date < datetime(year=today.year, month=10, day=1):
+                    orders_quaters[3].append(order)
+                else:
+                    orders_quaters[4].append(order)
+    elif today > datetime(year=today.year, month=7, day=1):
+        for order in order:
+            if order.date > datetime(year=today.year, month=1, day=1):
+                if order.date < datetime(year=today.year, month=4, day=1):
+                    orders_quaters[1].append(order)
+                elif order.date < datetime(year=today.year, month=7, day=1):
+                    orders_quaters[2].append(order)
+                else:
+                    orders_quaters[3].append(order)
+            else:
+                if order.date > datetime(year=today.year-1, month=10, day=1):
+                    orders_quaters[4].append(order)
+    elif today > datetime(year=today.year, month=4, day=1):
+        for order in order:
+            if order.date > datetime(year=today.year, month=1, day=1):
+                if order.date < datetime(year=today.year, month=4, day=1):
+                    orders_quaters[1].append(order)
+                else:
+                    orders_quaters[2].append(order)
+            else:
+                if order.date > datetime(year=today.year-1, month=10, day=1):
+                    orders_quaters[4].append(order)
+                elif order.date > datetime(year=today.year-1, month=7, day=1):
+                    orders_quaters[3].append(order)
+    elif today > datetime(year=today.year, month=1, day=1):
+        for order in order:
+            if order.date > datetime(year=today.year, month=1, day=1):
+                if order.date < datetime(year=today.year, month=4, day=1):
+                    orders_quaters[1].append(order)
+            else:
+                if order.date > datetime(year=today.year-1, month=10, day=1):
+                    orders_quaters[4].append(order)
+                elif order.date > datetime(year=today.year-1, month=7, day=1):
+                    orders_quaters[3].append(order)
+                elif order.date > datetime(year=today.year-1, month=4, day=1):
+                    orders_quaters[2].append(order)
+
+
+    quaters_quantity = {}
+    predict_quantity = {}
+    for i in (1, 2, 3, 4):
+        P1, P2, P3 = (0, 0, 0)
+        for order in orders_quaters[i]:
+            if order.product_id == 1:
+                P1 += order.quantity
+            elif order.order_product_relation[0].product_id == 2:
+                P2 += order.quantity
+            elif order.order_product_relation[0].product_id == 3:
+                P3 += order.quantity
+        quaters_quantity[f'Q{i}'] = {'P1': P1, 'P2': P2, 'P3': P3}
+        predict_quantity[f'Q{i}'] = {'P1': round(P1 * 1.1, 2), 'P2': round(P2 * 1.1, 2), 'P3': round(P3 * 1.1, 2)}
+        # 寫死，就直接隔年是今年的 1.1 倍，因為沒有季以外的其他參數。
+
+    return quaters_quantity, predict_quantity
+
+# Order seasonal_predict using seasonal additive method.
+@app.route('/order/predict', methods=['GET'])
+def seasonal_predict_result():
     if Order.query.first_or_404():
-        orders = Order.query.all()
-
-        today = datetime.today()
-        orders_quaters = {1:[], 2:[], 3:[], 4:[]}
-        if today > datetime(year=today.year, month=10, day=1):
-            for order in orders:
-                if order.date > datetime(year=today.year, month=1, day=1):
-                    if order.date < datetime(year=today.year, month=4, day=1):
-                        orders_quaters[1].append(order)
-                    elif order.date < datetime(year=today.year, month=7, day=1):
-                        orders_quaters[2].append(order)
-                    elif order.date < datetime(year=today.year, month=10, day=1):
-                        orders_quaters[3].append(order)
-                    else:
-                        orders_quaters[4].append(order)
-        elif today > datetime(year=today.year, month=7, day=1):
-            for order in orders:
-                if order.date > datetime(year=today.year, month=1, day=1):
-                    if order.date < datetime(year=today.year, month=4, day=1):
-                        orders_quaters[1].append(order)
-                    elif order.date < datetime(year=today.year, month=7, day=1):
-                        orders_quaters[2].append(order)
-                    else:
-                        orders_quaters[3].append(order)
-                else:
-                    if order.date > datetime(year=today.year-1, month=10, day=1):
-                        orders_quaters[4].append(order)
-        elif today > datetime(year=today.year, month=4, day=1):
-            for order in orders:
-                if order.date > datetime(year=today.year, month=1, day=1):
-                    if order.date < datetime(year=today.year, month=4, day=1):
-                        orders_quaters[1].append(order)
-                    else:
-                        orders_quaters[2].append(order)
-                else:
-                    if order.date > datetime(year=today.year-1, month=10, day=1):
-                        orders_quaters[4].append(order)
-                    elif order.date > datetime(year=today.year-1, month=7, day=1):
-                        orders_quaters[3].append(order)
-        elif today > datetime(year=today.year, month=1, day=1):
-            for order in orders:
-                if order.date > datetime(year=today.year, month=1, day=1):
-                    if order.date < datetime(year=today.year, month=4, day=1):
-                        orders_quaters[1].append(order)
-                else:
-                    if order.date > datetime(year=today.year-1, month=10, day=1):
-                        orders_quaters[4].append(order)
-                    elif order.date > datetime(year=today.year-1, month=7, day=1):
-                        orders_quaters[3].append(order)
-                    elif order.date > datetime(year=today.year-1, month=4, day=1):
-                        orders_quaters[2].append(order)
-
-        quaters_amount = {}
-        predict_amount = {}
-        for i in (1, 2, 3, 4):
-            quaters_amount[i] = sum([order.total_amount for order in orders_quaters[i]])
-            predict_amount[i] = quaters_amount[i] * 1.1
-            # 寫死，就直接隔年是今年的 1.1 倍，因為沒有季以外的其他參數。
-
-    return jsonify(available_data=quaters_amount, predict_data=predict_amount)
+        quaters_quantity, predict_quantity = seasonal_predict()
+    return jsonify(available_data=quaters_quantity, predict_data=predict_quantity)
 
 ##### MRP FUNCTIONS #####
+
 @app.route('/mrp', methods=['GET'])
-def getMRP():
+def get_mrp():
+    mmrelations = Material_Material.query.all()
     materials = Material.query.all()
     products = Product.query.all()
 
-    material_result = materials_schema.dump(materials)
-    product_result = products_schema.dump(products)
+    product_material_dict = {}
+    for product in products:
+        product_material_dict[product.product_id] = []
+        for product_material in product.product_material_relation:
+            for material in materials:
+                if product_material.material_id == material.material_id:
+                    product_material_dict[product.product_id].append(material)
 
-    return jsonify(products=product_result, materials=material_result)
+    mmrelations_dict = {}
+    # Get materials.
+    for relation in mmrelations:
+        for material in materials:
+            if relation.material_id == material.material_id:
+                mmrelations_dict[material.material_id] = []
+    # Get raw materials.
+    for relation in mmrelations:
+        for material in materials:
+            if relation.raw_material_id == material.material_id:
+                mmrelations_dict[relation.material_id].append(material)
+
+
+
+    reorder_data = {'material':[], 'product':[]}
+
+    for material in materials:
+        # middle material.
+        if material.on_hand_balance <= material.reorder_point:
+            if material.material_id in mmrelations_dict.keys():
+                when = 0
+                for raw_material in mmrelations_dict[material.material_id]:
+                    if raw_material.on_hand_balance <= raw_material.reorder_point:
+                        when = raw_material.reorder_point // 7
+                reorder_data['material'].append({'material': material, 'when': when, 'quantity': int(material.leading_time*material.on_hand_balance*0.1)})
+            # raw material.
+            else:
+                when = 0
+                reorder_data['material'].append({'material': material, 'when': when, 'quantity': int(material.leading_time*material.on_hand_balance*0.1)})
+
+    for product in products:
+        if product.on_hand_balance <= product.reorder_point:
+            when = 0
+            for data in reorder_data['material']:
+                if data:
+                    for material in product.product_material_relation:
+                        if material == data['material']:
+                            when += material.leading_time // 7
+            quantity = int(product.leading_time*product.on_hand_balance*0.1)
+            if quantity <= 0:
+                quantity = 50000
+            reorder_data['product'].append({'product': product, 'when': when, 'quantity': quantity})
+
+    print(reorder_data)
+
+    for i, material in enumerate(reorder_data['material']):
+        reorder_data['material'][i]['name'] = material['material'].material_name
+        del reorder_data['material'][i]['material']
+
+    for i, product in enumerate(reorder_data['product']):
+        reorder_data['product'][i]['name'] = product['product'].product_name
+        del reorder_data['product'][i]['product']
+
+    return jsonify(reorder_data)
+
 
 ##### MARKETING METRTICS - SEASON_SALE FUNCTIONS #####
 # Add a season_sale
@@ -558,10 +628,10 @@ def cal_qoq():
     if Season_Sale.query.first_or_404():
         all_season_sales = Season_Sale.query.all()
         for season_sale in all_season_sales:
-            sale_data.append(season_sale.sale) 
+            sale_data.append(season_sale.sale)
         qoq_list = []
         for index in range(4, 12):
-            qoq = round((sale_data[index]/sale_data[index-4]-1), 4) 
+            qoq = round((sale_data[index]/sale_data[index-4]-1), 4)
             qoq_list.append(qoq)
         print(qoq_list)
         result = []
@@ -575,10 +645,10 @@ def cal_qoq():
                 }
                 result.append(qoq)
                 index += 1
-        return jsonify(result) 
+        return jsonify(result)
 
 
-# Update a season_sale 
+# Update a season_sale
 def update_season_sale():
     print("update season sale")
     result =[]
@@ -627,10 +697,7 @@ def update_season_sale():
             for season in range(1, 5):
                 ssale_to_update = Season_Sale.query.filter(Season_Sale.year == year, Season_Sale.season == season).first()
                 ssale_to_update.sale = result[index]['sale']
-                index += 1 
-                
-
-
+                index += 1
 ##### 顧客活動指標 #####
 # 回購率
 @app.route('/repurchase-rate', methods=['GET'])
@@ -682,7 +749,6 @@ def cal_active_rate():
         result.append(result_list)
     return jsonify(result)
 
-# RFM
 @app.route('/rfm', methods=['GET'])
 def cal_rfm():
     if Order.query.first_or_404():
@@ -693,7 +759,7 @@ def cal_rfm():
         for member in members:
             selected_member_id.append(member.id)
         print(selected_member_id)
-        
+
         #F
         freq_dict = {}
         for member_id in selected_member_id:
@@ -705,7 +771,7 @@ def cal_rfm():
         for i in range(len(member_id_list)):
             selected_member_id.append(member_id_list[i][0])
         print(selected_member_id)
-        
+
         #R(負的)
         rect_dict = {}
         for member_id in selected_member_id:
@@ -721,8 +787,7 @@ def cal_rfm():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
-    
+    app.run()
 
 # "POST" test data
 member_test_data = {
