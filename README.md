@@ -1,10 +1,13 @@
-產銷資訊系統期末project  
+產銷資訊系統期末project(server端)  
 -使用flask框架的後端  
 -使用api與前端連結  
 -原資料庫為sqlite，上傳到heroku後升級為PostgreSQL
+-前端作者[serenade010](https://github.com/serenade010)  
+-前端[github](https://github.com/serenade010/simmons)
+-[demo](https://simmons.vercel.app/)  
     
 doc(2022/01/03更):https://reurl.cc/02o6lb  
-heroku線上server網址:https://python-nccu-mis.herokuapp.com/  
+heroku線上server網址:[heroku](https://python-nccu-mis.herokuapp.com/)  
 (若要使用heroku，將網址前面的本機端改為上行網址即可)  
 
   
