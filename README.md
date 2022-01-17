@@ -1,9 +1,9 @@
 產銷資訊系統期末project(server端)  
 -使用flask框架的後端  
 -使用api與前端連結  
--原資料庫為sqlite，上傳到heroku後升級為PostgreSQL
+-原資料庫為sqlite，上傳到heroku後升級為PostgreSQL  
 -前端作者[serenade010](https://github.com/serenade010)  
--前端[github](https://github.com/serenade010/simmons)
+-前端[github](https://github.com/serenade010/simmons)  
 -[demo](https://simmons.vercel.app/)  
     
 doc(2022/01/03更):https://reurl.cc/02o6lb  
