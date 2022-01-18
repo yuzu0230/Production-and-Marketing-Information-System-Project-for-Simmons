@@ -351,6 +351,10 @@ def get_products():
     if Product.query.first_or_404():
         all_products = Product.query.all()
         result = products_schema.dump(all_products)
+
+        for i in range(3):
+            del result[i]['product_material_relation']
+
         return jsonify(result)
 
 # Get products paginate.
@@ -362,6 +366,10 @@ def get_products_paginate(request_page):
         if pages.page > pages.pages:
             abort(404)
         result = products_schema.dump(pages.items)
+
+        for i in range(3):
+            del result[i]['product_material_relation']
+
         return jsonify(result)
 
 # Get certain product by product_id.
@@ -369,7 +377,11 @@ def get_products_paginate(request_page):
 def get_product(product_id):
     if Product.query.first_or_404():
         product = Product.query.get(product_id)
-        return product_schema.jsonify(product)
+        result = product_schema.dump(product)
+
+        del result['product_material_relation']
+
+        return jsonify(result)
 
 ##### REORDER POINT FUNCTIONS #####
 # Get all material and product list.
@@ -380,6 +392,10 @@ def get_inventory():
             all_products = Product.query.all()
             all_materials = Material.query.all()
             products = products_schema.dump(all_products)
+
+            for i in range(3):
+                del products[i]['product_material_relation']
+
             materials = materials_schema.dump(all_materials)
             return jsonify(products=products, materials=materials)
 
@@ -474,9 +490,9 @@ def seasonal_predict():
         for order in orders_quaters[i]:
             if order.product_id == 1:
                 P1 += order.quantity
-            elif order.order_product_relation[0].product_id == 2:
+            elif order.product_id == 2:
                 P2 += order.quantity
-            elif order.order_product_relation[0].product_id == 3:
+            elif order.product_id == 3:
                 P3 += order.quantity
         quaters_quantity[f'Q{i}'] = {'P1': P1, 'P2': P2, 'P3': P3}
         predict_quantity[f'Q{i}'] = {'P1': round(P1 * 1.1, 2), 'P2': round(P2 * 1.1, 2), 'P3': round(P3 * 1.1, 2)}
