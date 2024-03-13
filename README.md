@@ -1,32 +1,32 @@
-產銷資訊系統期末project(server端)  
--使用flask框架的後端  
--使用api與前端連結  
--原資料庫為sqlite，上傳到heroku後升級為PostgreSQL  
--前端作者[serenade010](https://github.com/serenade010)  
--前端[github](https://github.com/serenade010/simmons)  
--[demo](https://simmons.vercel.app/)  
-    
-doc(2022/01/03更):https://reurl.cc/02o6lb  
-heroku線上server網址:https://python-nccu-mis.herokuapp.com/  
-(若要使用heroku，將網址前面的本機端改為上行網址即可)  
+## Production and Marketing Information System Final Project (Server Side)
+- Backend developed using the Flask framework
+- Utilizes APIs for frontend integration
+- Frontend developed by [serenade010](https://github.com/serenade010)
+- Frontend [GitHub repository](https://github.com/serenade010/simmons)
+- [Demo](https://simmons.vercel.app/)
+- Documentation (Updated on 2022/01/03): https://reurl.cc/02o6lb
+### Completed Features
+- **Member Data:** Add, query, and delete member database commands 
+- **Marketing Indicator - Seasonal Sales Volume:** Query past three years' seasonal sales volume  
+- **Customer Activity Indicators:**  
+  (1) Repurchase Rate: Obtain overall customer repurchase rate  
+  (2) Activity Rate: Obtain individual customer activity rates  
+- **Customer Value Analysis:**  
+  RFM Analysis: Filters based on RFM ordering, dividing into two groups, theoretically resulting in the member data being one-eighth of the "members who have made purchases.
 
+## 產銷資訊系統期末project(server端)  
+- 使用flask框架的後端  
+- 使用api與前端連結 
+- 前端作者[serenade010](https://github.com/serenade010)  
+- 前端[github](https://github.com/serenade010/simmons)  
+- [demo](https://simmons.vercel.app/)  
+- doc(2022/01/03更): https://reurl.cc/02o6lb 
   
-2021/12/24  
 目前完成功能:  
-功能一：會員資料：新增、查詢、刪除會員資料庫指令  
-  
-2021/12/29  
-目前完成功能：  
-功能三：行銷指標──季銷售量：查詢過去三年季銷售量  
-功能四：顧客活動指標：  
-(1) 回購率：取得整體顧客回購率  
-(2) 活躍率：取得各個顧客活躍率  
-功能五：顧客價值分析：  
-RFM分析：依據RFM順序做篩選，分成兩組，因此理論上最後得到的會員資料數應為「有消費過會員數」的八分之一。  
-  
-需修正  
-功能二：訂單資料：資料庫內訂單與產品相關聯的部分需要改正  
-  
-已有範例用的資料庫，僅供測試  
-  
-待更...  
+- 會員資料：新增、查詢、刪除會員資料庫指令    
+- 行銷指標──季銷售量：查詢過去三年季銷售量  
+- 顧客活動指標：  
+ (1) 回購率：取得整體顧客回購率  
+ (2) 活躍率：取得各個顧客活躍率  
+- 顧客價值分析：  
+RFM分析：依據RFM順序做篩選，分成兩組，因此理論上最後得到的會員資料數應為「有消費過會員數」的八分之一。 
