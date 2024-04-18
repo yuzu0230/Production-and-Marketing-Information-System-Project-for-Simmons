@@ -3,7 +3,6 @@
 - Utilizes APIs for frontend integration
 - Frontend developed by [serenade010](https://github.com/serenade010)
 - Frontend [GitHub repository](https://github.com/serenade010/simmons)
-- [Demo](https://simmons.vercel.app/)
 - Documentation (Updated on 2022/01/03): https://reurl.cc/02o6lb
 ### Completed Features
 - **Member Data:** Add, query, and delete member database commands 
@@ -23,8 +22,7 @@
 - 使用flask框架的後端  
 - 使用api與前端連結 
 - 前端作者[serenade010](https://github.com/serenade010)  
-- 前端[github](https://github.com/serenade010/simmons)  
-- [demo](https://simmons.vercel.app/)  
+- 前端[github](https://github.com/serenade010/simmons) 
 - doc(2022/01/03更): https://reurl.cc/02o6lb 
   
 目前完成功能:  
